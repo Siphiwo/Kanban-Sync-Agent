@@ -136,6 +136,7 @@ oauthRouter.get('/trello/callback', async (req: express.Request, res: express.Re
       <html>
       <head>
         <title>Trello Authorization</title>
+        <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://kanban-sync-agent-production.up.railway.app;">
         <style>
           body {
             font-family: system-ui, -apple-system, sans-serif;
@@ -208,6 +209,9 @@ oauthRouter.get('/trello/callback', async (req: express.Request, res: express.Re
       </html>
     `;
     
+    // Override CSP for this specific response
+    res.removeHeader('Content-Security-Policy');
+    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self';");
     res.send(callbackHtml);
   } catch (error) {
     logger.error('Trello OAuth callback error:', error);
