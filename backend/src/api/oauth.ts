@@ -136,27 +136,70 @@ oauthRouter.get('/trello/callback', async (req: express.Request, res: express.Re
       <html>
       <head>
         <title>Trello Authorization</title>
+        <style>
+          body {
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: #f5f5f5;
+          }
+          .loader {
+            text-align: center;
+          }
+          .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #0079bf;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+          }
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        </style>
       </head>
       <body>
+        <div class="loader">
+          <div class="spinner"></div>
+          <p>Connecting to Trello...</p>
+        </div>
         <script>
           const fragment = window.location.hash.substring(1);
           const params = new URLSearchParams(fragment);
           const token = params.get('token');
-          const userId = params.get('user_id');
           
-          if (token && userId) {
-            // Send token to backend
-            fetch('/api/oauth/trello/store', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ token, userId })
-            }).then(() => {
-              window.location.href = '${process.env.FRONTEND_URL}/connections?success=trello';
-            }).catch(() => {
-              window.location.href = '${process.env.FRONTEND_URL}/connections?error=store_failed';
-            });
+          if (token) {
+            // Get userId from localStorage (set by frontend before OAuth)
+            const userId = localStorage.getItem('kanbansync_user_id');
+            const authToken = localStorage.getItem('kanbansync_auth_token');
+            
+            if (userId && authToken) {
+              // Send token to backend
+              fetch('/api/oauth/trello/store', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': 'Bearer ' + authToken
+                },
+                body: JSON.stringify({ token, userId })
+              }).then(response => {
+                if (response.ok) {
+                  window.location.href = '${process.env.FRONTEND_URL}/connections?success=trello';
+                } else {
+                  window.location.href = '${process.env.FRONTEND_URL}/connections?error=store_failed';
+                }
+              }).catch(() => {
+                window.location.href = '${process.env.FRONTEND_URL}/connections?error=store_failed';
+              });
+            } else {
+              window.location.href = '${process.env.FRONTEND_URL}/connections?error=no_user';
+            }
           } else {
             window.location.href = '${process.env.FRONTEND_URL}/connections?error=no_token';
           }

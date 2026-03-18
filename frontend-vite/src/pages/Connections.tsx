@@ -56,6 +56,13 @@ export default function Connections() {
     setConnecting(platform);
     
     try {
+      // Store user info in localStorage for OAuth callback
+      localStorage.setItem('kanbansync_user_id', user.id);
+      const authToken = localStorage.getItem('token');
+      if (authToken) {
+        localStorage.setItem('kanbansync_auth_token', authToken);
+      }
+      
       let authUrl = '';
       
       if (platform === 'asana') {
@@ -63,7 +70,7 @@ export default function Connections() {
         authUrl = `${response.authUrl}&user_id=${user.id}`;
       } else if (platform === 'trello') {
         const response = await oauthAPI.getTrelloAuthUrl();
-        authUrl = `${response.authUrl}#user_id=${user.id}`;
+        authUrl = response.authUrl;
       } else if (platform === 'monday') {
         const response = await oauthAPI.getMondayAuthUrl();
         authUrl = `${response.authUrl}&user_id=${user.id}`;
