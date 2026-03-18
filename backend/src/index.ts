@@ -163,7 +163,7 @@ async function startServer() {
   try {
     await initDatabase();
     
-    server.listen(PORT, '0.0.0.0', () => {
+    server.listen(Number(PORT), '0.0.0.0', () => {
       logger.info(`🚀 KanbanSync backend running on port ${PORT}`);
       logger.info(`📊 Health check: http://localhost:${PORT}/health`);
       logger.info(`📈 Metrics: http://localhost:${PORT}/metrics`);
