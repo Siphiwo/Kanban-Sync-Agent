@@ -112,7 +112,7 @@ export class StatusTracker {
         WHERE user_id = $1
       `, [this.userId]);
 
-      const { total_rules, active_rules } = rulesResult.rows[0];
+      const { total_rules, active_rules } = rulesResult.rows[0] || { total_rules: 0, active_rules: 0 };
 
       // Get sync statistics for last 30 days
       const syncStatsResult = await query(`
@@ -127,7 +127,12 @@ export class StatusTracker {
         AND sl.created_at >= NOW() - INTERVAL '30 days'
       `, [this.userId]);
 
-      const { total_syncs, successful_syncs, failed_syncs, last_sync_time } = syncStatsResult.rows[0];
+      const { total_syncs, successful_syncs, failed_syncs, last_sync_time } = syncStatsResult.rows[0] || { 
+        total_syncs: 0, 
+        successful_syncs: 0, 
+        failed_syncs: 0, 
+        last_sync_time: null 
+      };
 
       // Get recent errors
       const recentErrors = await this.getRecentErrors(5);
@@ -135,18 +140,27 @@ export class StatusTracker {
       const successRate = total_syncs > 0 ? (successful_syncs / total_syncs) * 100 : 0;
 
       return {
-        totalRules: parseInt(total_rules),
-        activeRules: parseInt(active_rules),
-        totalSyncs: parseInt(total_syncs),
-        successfulSyncs: parseInt(successful_syncs),
-        failedSyncs: parseInt(failed_syncs),
+        totalRules: parseInt(total_rules) || 0,
+        activeRules: parseInt(active_rules) || 0,
+        totalSyncs: parseInt(total_syncs) || 0,
+        successfulSyncs: parseInt(successful_syncs) || 0,
+        failedSyncs: parseInt(failed_syncs) || 0,
         successRate: Math.round(successRate * 100) / 100,
         lastSyncTime: last_sync_time ? new Date(last_sync_time) : undefined,
         recentErrors
       };
     } catch (error) {
       logger.error('Failed to get sync status:', error);
-      throw error;
+      // Return empty status instead of throwing
+      return {
+        totalRules: 0,
+        activeRules: 0,
+        totalSyncs: 0,
+        successfulSyncs: 0,
+        failedSyncs: 0,
+        successRate: 0,
+        recentErrors: []
+      };
     }
   }
 
@@ -255,7 +269,8 @@ export class StatusTracker {
       }));
     } catch (error) {
       logger.error('Failed to get sync history:', error);
-      throw error;
+      // Return empty array instead of throwing
+      return [];
     }
   }
 

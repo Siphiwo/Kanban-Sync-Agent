@@ -47,8 +47,11 @@ oauthRouter.get('/asana/authorize', authenticateToken, async (req: express.Reque
     const redirectUri = `${protocol}://${req.get('host')}/api/oauth/asana/callback`;
     const state = crypto.randomBytes(32).toString('hex');
     
+    // Use openid scope instead of deprecated 'default'
+    const scope = 'openid email profile';
+    
     // Store state in session or database for verification
-    const authUrl = `https://app.asana.com/-/oauth_authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${state}`;
+    const authUrl = `https://app.asana.com/-/oauth_authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${state}&scope=${encodeURIComponent(scope)}`;
     
     res.json({ authUrl, state });
   } catch (error) {
@@ -227,13 +230,19 @@ oauthRouter.post('/trello/store', async (req: express.Request, res: express.Resp
   try {
     const { token, userId } = req.body;
     
+    logger.info('Trello store request received:', { hasToken: !!token, userId });
+    
     if (!token || !userId) {
+      logger.warn('Trello store missing data:', { hasToken: !!token, hasUserId: !!userId });
       return res.status(400).json({ error: 'Missing token or user ID' });
     }
     
     // Verify token works
+    logger.info('Verifying Trello token...');
     const trelloSkill = new TrelloSkill(token);
     const boards = await trelloSkill.getBoards();
+    
+    logger.info('Trello boards fetched:', { count: boards.length });
     
     if (boards.length === 0) {
       return res.status(400).json({ error: 'No boards found' });
@@ -242,6 +251,8 @@ oauthRouter.post('/trello/store', async (req: express.Request, res: express.Resp
     // Store encrypted token
     const encryptedToken = encrypt(token);
     
+    logger.info('Storing Trello connection in database...', { userId });
+    
     await query(`
       INSERT INTO connections (user_id, platform, platform_user_id, access_token, is_active)
       VALUES ($1, $2, $3, $4, $5)
@@ -249,7 +260,7 @@ oauthRouter.post('/trello/store', async (req: express.Request, res: express.Resp
       DO UPDATE SET access_token = $4, is_active = $5, updated_at = CURRENT_TIMESTAMP
     `, [userId, 'trello', 'trello_user', encryptedToken, true]);
     
-    logger.info('Trello connection created:', { userId });
+    logger.info('Trello connection created successfully:', { userId });
     res.json({ success: true });
   } catch (error) {
     logger.error('Trello OAuth store error:', error);
