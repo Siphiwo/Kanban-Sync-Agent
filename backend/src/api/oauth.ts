@@ -42,7 +42,9 @@ function decrypt(encryptedText: string): string {
 oauthRouter.get('/asana/authorize', authenticateToken, async (req: express.Request, res: express.Response) => {
   try {
     const clientId = process.env.ASANA_CLIENT_ID;
-    const redirectUri = `${req.protocol}://${req.get('host')}/api/oauth/asana/callback`;
+    // Force HTTPS in production
+    const protocol = process.env.NODE_ENV === 'production' ? 'https' : req.protocol;
+    const redirectUri = `${protocol}://${req.get('host')}/api/oauth/asana/callback`;
     const state = crypto.randomBytes(32).toString('hex');
     
     // Store state in session or database for verification
@@ -67,7 +69,8 @@ oauthRouter.get('/asana/callback', async (req: express.Request, res: express.Res
       return res.redirect(`${process.env.FRONTEND_URL}/connections?error=no_code`);
     }
     
-    const redirectUri = `${req.protocol}://${req.get('host')}/api/oauth/asana/callback`;
+    const protocol = process.env.NODE_ENV === 'production' ? 'https' : req.protocol;
+    const redirectUri = `${protocol}://${req.get('host')}/api/oauth/asana/callback`;
     const accessToken = await AsanaSkill.authenticate(code as string, redirectUri);
     
     // Get user info to store connection
@@ -111,7 +114,9 @@ oauthRouter.get('/trello/authorize', authenticateToken, async (req: express.Requ
     const appName = 'KanbanSync';
     const scope = 'read,write';
     const expiration = 'never';
-    const redirectUri = `${req.protocol}://${req.get('host')}/api/oauth/trello/callback`;
+    // Force HTTPS in production
+    const protocol = process.env.NODE_ENV === 'production' ? 'https' : req.protocol;
+    const redirectUri = `${protocol}://${req.get('host')}/api/oauth/trello/callback`;
     
     const authUrl = `https://trello.com/1/authorize?key=${apiKey}&name=${encodeURIComponent(appName)}&scope=${scope}&expiration=${expiration}&response_type=token&callback_method=fragment&return_url=${encodeURIComponent(redirectUri)}`;
     
@@ -256,7 +261,9 @@ oauthRouter.post('/verify/:connectionId', authenticateToken, async (req: express
 oauthRouter.get('/monday/authorize', authenticateToken, async (req: express.Request, res: express.Response) => {
   try {
     const clientId = process.env.MONDAY_CLIENT_ID;
-    const redirectUri = `${req.protocol}://${req.get('host')}/api/oauth/monday/callback`;
+    // Force HTTPS in production
+    const protocol = process.env.NODE_ENV === 'production' ? 'https' : req.protocol;
+    const redirectUri = `${protocol}://${req.get('host')}/api/oauth/monday/callback`;
     const state = crypto.randomBytes(32).toString('hex');
     
     const authUrl = `https://auth.monday.com/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
@@ -280,7 +287,8 @@ oauthRouter.get('/monday/callback', async (req: express.Request, res: express.Re
       return res.redirect(`${process.env.FRONTEND_URL}/connections?error=no_code`);
     }
     
-    const redirectUri = `${req.protocol}://${req.get('host')}/api/oauth/monday/callback`;
+    const protocol = process.env.NODE_ENV === 'production' ? 'https' : req.protocol;
+    const redirectUri = `${protocol}://${req.get('host')}/api/oauth/monday/callback`;
     const accessToken = await MondaySkill.authenticate(code as string, redirectUri);
     
     // Get user info to store connection
@@ -355,7 +363,9 @@ oauthRouter.post('/clickup/connect', authenticateToken, async (req: express.Requ
 oauthRouter.get('/jira/authorize', authenticateToken, async (req: express.Request, res: express.Response) => {
   try {
     const clientId = process.env.JIRA_CLIENT_ID;
-    const redirectUri = `${req.protocol}://${req.get('host')}/api/oauth/jira/callback`;
+    // Force HTTPS in production
+    const protocol = process.env.NODE_ENV === 'production' ? 'https' : req.protocol;
+    const redirectUri = `${protocol}://${req.get('host')}/api/oauth/jira/callback`;
     const state = crypto.randomBytes(32).toString('hex');
     const scope = 'read:jira-work write:jira-work manage:jira-project';
     
@@ -380,7 +390,8 @@ oauthRouter.get('/jira/callback', async (req: express.Request, res: express.Resp
       return res.redirect(`${process.env.FRONTEND_URL}/connections?error=no_code`);
     }
     
-    const redirectUri = `${req.protocol}://${req.get('host')}/api/oauth/jira/callback`;
+    const protocol = process.env.NODE_ENV === 'production' ? 'https' : req.protocol;
+    const redirectUri = `${protocol}://${req.get('host')}/api/oauth/jira/callback`;
     const { accessToken, cloudId } = await JiraSkill.authenticate(code as string, redirectUri);
     
     // Get user info to store connection
