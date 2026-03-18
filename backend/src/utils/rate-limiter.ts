@@ -68,20 +68,20 @@ class RateLimiter {
       });
 
       // Handle response to potentially skip counting
-      const originalSend = res.send;
-      res.send = function(body) {
+      const originalSend = res.send.bind(res);
+      const { skipSuccessfulRequests, skipFailedRequests } = this.config;
+      res.send = function(this: Response, body: any) {
         const statusCode = res.statusCode;
         
-        // Skip counting based on config
         if (
-          (statusCode >= 200 && statusCode < 300 && this.config.skipSuccessfulRequests) ||
-          (statusCode >= 400 && this.config.skipFailedRequests)
+          (statusCode >= 200 && statusCode < 300 && skipSuccessfulRequests) ||
+          (statusCode >= 400 && skipFailedRequests)
         ) {
           entry!.count--;
         }
         
-        return originalSend.call(this, body);
-      }.bind(this);
+        return originalSend(body);
+      };
 
       next();
     };
