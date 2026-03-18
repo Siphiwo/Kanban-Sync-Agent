@@ -12,6 +12,7 @@ export default function Chat() {
     loadHistory();
   }, []);
 
+  /* this scrolls to the bottom of the page */
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
