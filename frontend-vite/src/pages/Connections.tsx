@@ -7,6 +7,7 @@ export default function Connections() {
   const { user } = useAuth();
   const [connections, setConnections] = useState<Connection[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [connecting, setConnecting] = useState<string | null>(null);
   const [clickupToken, setClickupToken] = useState('');
   const [showClickupForm, setShowClickupForm] = useState(false);
@@ -36,10 +37,13 @@ export default function Connections() {
 
   const loadConnections = async () => {
     try {
+      setError(null);
       const data = await connectionsAPI.getConnections();
+      console.log('Loaded connections:', data);
       setConnections(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load connections:', error);
+      setError(error.response?.data?.error || error.message || 'Failed to load connections');
     } finally {
       setLoading(false);
     }
@@ -145,6 +149,35 @@ export default function Connections() {
 
   if (loading) {
     return <div>Loading...</div>;
+  }
+
+  if (error) {
+    return (
+      <div style={{
+        backgroundColor: '#f8d7da',
+        color: '#721c24',
+        padding: '20px',
+        borderRadius: '8px',
+        border: '1px solid #f5c6cb'
+      }}>
+        <h3>Error Loading Connections</h3>
+        <p>{error}</p>
+        <button 
+          onClick={loadConnections}
+          style={{
+            marginTop: '10px',
+            padding: '8px 16px',
+            backgroundColor: '#721c24',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          Retry
+        </button>
+      </div>
+    );
   }
 
   const connectedPlatforms = connections.map(conn => conn.platform);

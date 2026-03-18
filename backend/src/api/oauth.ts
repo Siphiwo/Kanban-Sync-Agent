@@ -129,6 +129,8 @@ oauthRouter.get('/trello/authorize', authenticateToken, async (req: express.Requ
 
 oauthRouter.get('/trello/callback', async (req: express.Request, res: express.Response) => {
   try {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    
     // Trello returns token in URL fragment, so we need to handle it on frontend
     // This endpoint serves the callback page that extracts the token
     const callbackHtml = `
@@ -171,6 +173,7 @@ oauthRouter.get('/trello/callback', async (req: express.Request, res: express.Re
           <p>Connecting to Trello...</p>
         </div>
         <script>
+          const FRONTEND_URL = '${frontendUrl}';
           const fragment = window.location.hash.substring(1);
           const params = new URLSearchParams(fragment);
           const token = params.get('token');
@@ -191,18 +194,18 @@ oauthRouter.get('/trello/callback', async (req: express.Request, res: express.Re
                 body: JSON.stringify({ token, userId })
               }).then(response => {
                 if (response.ok) {
-                  window.location.href = '${process.env.FRONTEND_URL}/connections?success=trello';
+                  window.location.href = FRONTEND_URL + '/connections?success=trello';
                 } else {
-                  window.location.href = '${process.env.FRONTEND_URL}/connections?error=store_failed';
+                  window.location.href = FRONTEND_URL + '/connections?error=store_failed';
                 }
               }).catch(() => {
-                window.location.href = '${process.env.FRONTEND_URL}/connections?error=store_failed';
+                window.location.href = FRONTEND_URL + '/connections?error=store_failed';
               });
             } else {
-              window.location.href = '${process.env.FRONTEND_URL}/connections?error=no_user';
+              window.location.href = FRONTEND_URL + '/connections?error=no_user';
             }
           } else {
-            window.location.href = '${process.env.FRONTEND_URL}/connections?error=no_token';
+            window.location.href = FRONTEND_URL + '/connections?error=no_token';
           }
         </script>
       </body>
@@ -215,7 +218,8 @@ oauthRouter.get('/trello/callback', async (req: express.Request, res: express.Re
     res.send(callbackHtml);
   } catch (error) {
     logger.error('Trello OAuth callback error:', error);
-    res.redirect(`${process.env.FRONTEND_URL}/connections?error=callback_failed`);
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    res.redirect(`${frontendUrl}/connections?error=callback_failed`);
   }
 });
 
