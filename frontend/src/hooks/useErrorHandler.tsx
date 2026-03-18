@@ -31,7 +31,7 @@ export function useErrorHandler() {
     setErrors([]);
   }, []);
 
-  const handleAsyncError = useCallback(async <T>(
+  const handleAsyncError = useCallback(async <T,>(
     asyncFn: () => Promise<T>,
     errorMessage?: string
   ): Promise<T | null> => {
@@ -58,7 +58,7 @@ export function useRetry() {
   const [retryCount, setRetryCount] = useState(0);
   const [isRetrying, setIsRetrying] = useState(false);
 
-  const retry = useCallback(async <T>(
+  const retry = useCallback(async <T,>(
     asyncFn: () => Promise<T>,
     maxRetries: number = 3,
     delay: number = 1000

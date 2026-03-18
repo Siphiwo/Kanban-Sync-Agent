@@ -6,17 +6,28 @@ import { logger } from '../utils/logger';
 // CORS configuration
 export const corsOptions = {
   origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+    // Build allowed origins list
     const allowedOrigins = [
       'http://localhost:3000',
       'http://localhost:3001',
       process.env.FRONTEND_URL,
-      process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null
-    ].filter(Boolean);
+      process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
+      // Support comma-separated CORS_ORIGINS env var
+      ...(process.env.CORS_ORIGINS?.split(',').map(o => o.trim()) || [])
+    ].filter(Boolean) as string[];
 
-    // Allow requests with no origin (mobile apps, etc.)
+    // Allow requests with no origin (mobile apps, Postman, etc.)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.includes(origin)) {
+    // Check if origin is allowed (exact match or wildcard for Vercel preview deployments)
+    const isAllowed = allowedOrigins.some(allowed => {
+      if (allowed === origin) return true;
+      // Allow all Vercel preview deployments
+      if (origin.endsWith('.vercel.app') && allowedOrigins.some(o => o.includes('vercel.app'))) return true;
+      return false;
+    });
+    
+    if (isAllowed) {
       callback(null, true);
     } else {
       logger.warn(`CORS blocked origin: ${origin}`);
