@@ -82,16 +82,31 @@ export class StatusTracker {
 
       const recommendations = this.generateRecommendations(overview, connections, webhookHealth);
 
+      // Map to the shape the frontend expects
       const report = {
-        overview,
-        connections,
-        recentHistory,
-        webhookHealth,
-        recommendations
+        sync_status: {
+          total_rules: overview.totalRules,
+          active_rules: overview.activeRules,
+          total_syncs_today: overview.totalSyncs,
+          success_rate_today: overview.successRate,
+          last_sync: overview.lastSyncTime ?? null,
+        },
+        connection_health: connections.map(c => ({
+          platform: c.platform,
+          status: c.status,
+          last_check: c.lastUsed ?? new Date(),
+          error_message: undefined,
+        })),
+        recent_errors: overview.recentErrors.map(e => ({
+          id: e.id,
+          rule_name: e.ruleName,
+          error_message: e.errorMessage,
+          created_at: e.createdAt,
+        })),
+        recommendations,
       };
 
-      // Sanitize the report before returning
-      return DataSanitizer.sanitizeStatusReport(report);
+      return report as any;
     } catch (error) {
       logger.error('Failed to get status report:', error);
       throw error;
