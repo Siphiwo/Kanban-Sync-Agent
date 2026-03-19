@@ -15,7 +15,7 @@ const LOG_LEVELS: LogLevel = {
 class Logger {
   private formatMessage(level: string, message: string, data?: any): string {
     const timestamp = new Date().toISOString();
-    const logData = data ? ` ${JSON.stringify(data)}` : '';
+    const logData = data ? ` ${JSON.stringify(data, null, 2)}` : '';
     return `[${timestamp}] ${level.toUpperCase()}: ${message}${logData}`;
   }
 
@@ -24,6 +24,12 @@ class Logger {
   }
 
   error(message: string, data?: any): void {
+    // Always extract stack trace from Error objects
+    if (data instanceof Error) {
+      data = { message: data.message, stack: data.stack, name: data.name };
+    } else if (data && typeof data === 'object' && !data.stack && data.error instanceof Error) {
+      data = { ...data, stack: data.error.stack };
+    }
     console.error(this.formatMessage(LOG_LEVELS.ERROR, message, data));
   }
 

@@ -49,6 +49,24 @@ app.use('/api', apiRateLimit.middleware());
 // Routes
 app.use('/api', apiRouter);
 
+// Log all 4xx/5xx responses with request context
+app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const originalJson = res.json.bind(res);
+  res.json = function (body: any) {
+    if (res.statusCode >= 400) {
+      logger.error(`HTTP ${res.statusCode} ${req.method} ${req.originalUrl}`, {
+        status: res.statusCode,
+        body,
+        userId: (req as any).user?.userId,
+        ip: req.ip,
+        userAgent: req.get('User-Agent'),
+      });
+    }
+    return originalJson(body);
+  };
+  next();
+});
+
 // Webhooks (setup before other middleware to handle raw payloads)
 WebhookListener.setupWebhookEndpoints(app);
 
