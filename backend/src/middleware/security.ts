@@ -11,6 +11,8 @@ export const corsOptions = {
       'http://localhost:3000',
       'http://localhost:3001',
       process.env.FRONTEND_URL,
+      process.env.BACKEND_URL,
+      process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null,
       process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
       // Support comma-separated CORS_ORIGINS env var
       ...(process.env.CORS_ORIGINS?.split(',').map(o => o.trim()) || [])

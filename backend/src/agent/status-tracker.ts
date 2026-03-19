@@ -135,7 +135,7 @@ export class StatusTracker {
           COUNT(*) as total_syncs,
           COUNT(CASE WHEN status = 'success' THEN 1 END) as successful_syncs,
           COUNT(CASE WHEN status = 'error' THEN 1 END) as failed_syncs,
-          MAX(created_at) as last_sync_time
+          MAX(sl.created_at) as last_sync_time
         FROM sync_logs sl
         JOIN sync_rules sr ON sl.rule_id = sr.id
         WHERE sr.user_id = $1 
@@ -259,7 +259,7 @@ export class StatusTracker {
           tc.platform as target_platform,
           sl.sync_data,
           sl.created_at,
-          EXTRACT(EPOCH FROM (sl.updated_at - sl.created_at)) as duration
+          EXTRACT(EPOCH FROM (NOW() - sl.created_at)) as duration
         FROM sync_logs sl
         JOIN sync_rules sr ON sl.rule_id = sr.id
         JOIN connections sc ON sr.source_connection_id = sc.id
