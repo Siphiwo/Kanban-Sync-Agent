@@ -117,9 +117,10 @@ oauthRouter.get('/trello/authorize', authenticateToken, async (req: express.Requ
     const appName = 'KanbanSync';
     const scope = 'read,write';
     const expiration = 'never';
-    // Force HTTPS in production
     const protocol = process.env.NODE_ENV === 'production' ? 'https' : req.protocol;
-    const redirectUri = `${protocol}://${req.get('host')}/api/oauth/trello/callback`;
+    const userId = (req as any).user!.userId;
+    // Embed userId in the callback URL so the callback page doesn't need localStorage
+    const redirectUri = `${protocol}://${req.get('host')}/api/oauth/trello/callback?user_id=${userId}`;
     
     const authUrl = `https://trello.com/1/authorize?key=${apiKey}&name=${encodeURIComponent(appName)}&scope=${scope}&expiration=${expiration}&response_type=token&callback_method=fragment&return_url=${encodeURIComponent(redirectUri)}`;
     
@@ -133,91 +134,51 @@ oauthRouter.get('/trello/authorize', authenticateToken, async (req: express.Requ
 oauthRouter.get('/trello/callback', async (req: express.Request, res: express.Response) => {
   try {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    
-    // Trello returns token in URL fragment, so we need to handle it on frontend
-    // This endpoint serves the callback page that extracts the token
-    const callbackHtml = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Trello Authorization</title>
-        <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://kanban-sync-agent-production.up.railway.app;">
-        <style>
-          body {
-            font-family: system-ui, -apple-system, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background: #f5f5f5;
-          }
-          .loader {
-            text-align: center;
-          }
-          .spinner {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #0079bf;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-          }
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="loader">
-          <div class="spinner"></div>
-          <p>Connecting to Trello...</p>
-        </div>
-        <script>
-          const FRONTEND_URL = '${frontendUrl}';
-          const fragment = window.location.hash.substring(1);
-          const params = new URLSearchParams(fragment);
-          const token = params.get('token');
-          
-          if (token) {
-            // Get userId from localStorage (set by frontend before OAuth)
-            const userId = localStorage.getItem('kanbansync_user_id');
-            const authToken = localStorage.getItem('kanbansync_auth_token');
-            
-            if (userId && authToken) {
-              // Send token to backend
-              fetch('/api/oauth/trello/store', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': 'Bearer ' + authToken
-                },
-                body: JSON.stringify({ token, userId })
-              }).then(response => {
-                if (response.ok) {
-                  window.location.href = FRONTEND_URL + '/connections?success=trello';
-                } else {
-                  window.location.href = FRONTEND_URL + '/connections?error=store_failed';
-                }
-              }).catch(() => {
-                window.location.href = FRONTEND_URL + '/connections?error=store_failed';
-              });
-            } else {
-              window.location.href = FRONTEND_URL + '/connections?error=no_user';
-            }
-          } else {
-            window.location.href = FRONTEND_URL + '/connections?error=no_token';
-          }
-        </script>
-      </body>
-      </html>
-    `;
-    
-    // Override CSP for this specific response
+    const userId = req.query.user_id as string;
+
+    if (!userId) {
+      return res.redirect(`${frontendUrl}/connections?error=no_user`);
+    }
+
+    // Trello returns token in URL fragment — serve a page that extracts it and POSTs to backend
+    const backendUrl = `${process.env.NODE_ENV === 'production' ? 'https' : req.protocol}://${req.get('host')}`;
+    const callbackHtml = `<!DOCTYPE html>
+<html>
+<head><title>Trello Authorization</title>
+<style>
+  body { font-family: system-ui, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #f5f5f5; }
+  .loader { text-align: center; }
+  .spinner { border: 3px solid #f3f3f3; border-top: 3px solid #0079bf; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="loader"><div class="spinner"></div><p>Connecting to Trello...</p></div>
+<script>
+  const FRONTEND_URL = '${frontendUrl}';
+  const BACKEND_URL = '${backendUrl}';
+  const USER_ID = '${userId}';
+  const fragment = window.location.hash.substring(1);
+  const token = new URLSearchParams(fragment).get('token');
+  if (token) {
+    fetch(BACKEND_URL + '/api/oauth/trello/store', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, userId: USER_ID })
+    }).then(r => {
+      window.location.href = FRONTEND_URL + (r.ok ? '/connections?success=trello' : '/connections?error=store_failed');
+    }).catch(() => {
+      window.location.href = FRONTEND_URL + '/connections?error=store_failed';
+    });
+  } else {
+    window.location.href = FRONTEND_URL + '/connections?error=no_token';
+  }
+</script>
+</body>
+</html>`;
+
     res.removeHeader('Content-Security-Policy');
-    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self';");
+    res.setHeader('Content-Security-Policy', `default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src ${backendUrl};`);
     res.send(callbackHtml);
   } catch (error) {
     logger.error('Trello OAuth callback error:', error);
