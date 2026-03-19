@@ -441,9 +441,12 @@ export class StatusTracker {
    * Get sync statistics for a specific time period
    */
   async getSyncStatistics(days: number = 7): Promise<{
-    dailyStats: Array<{ date: string; syncs: number; errors: number }>;
-    topErrors: Array<{ error: string; count: number }>;
-    rulePerformance: Array<{ ruleName: string; successRate: number; totalSyncs: number }>;
+    total_syncs: number;
+    successful_syncs: number;
+    failed_syncs: number;
+    success_rate: number;
+    avg_sync_time: number;
+    daily_stats: Array<{ date: string; syncs: number; success_rate: number }>;
   }> {
     try {
       // Daily statistics
