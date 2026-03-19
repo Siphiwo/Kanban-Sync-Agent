@@ -238,7 +238,7 @@ export class StatusTracker {
       });
     } catch (error) {
       logger.error('Failed to get connection health:', error);
-      throw error;
+      return [];
     }
   }
 
@@ -378,7 +378,7 @@ export class StatusTracker {
       }));
     } catch (error) {
       logger.error('Failed to get recent errors:', error);
-      throw error;
+      return [];
     }
   }
 
@@ -492,24 +492,26 @@ export class StatusTracker {
       `, [this.userId]);
 
       return {
-        dailyStats: dailyStatsResult.rows.map((row: any) => ({
+        total_syncs: dailyStatsResult.rows.reduce((sum: number, r: any) => sum + parseInt(r.syncs), 0),
+        successful_syncs: dailyStatsResult.rows.reduce((sum: number, r: any) => sum + (parseInt(r.syncs) - parseInt(r.errors)), 0),
+        failed_syncs: dailyStatsResult.rows.reduce((sum: number, r: any) => sum + parseInt(r.errors), 0),
+        success_rate: (() => {
+          const total = dailyStatsResult.rows.reduce((sum: number, r: any) => sum + parseInt(r.syncs), 0);
+          const errors = dailyStatsResult.rows.reduce((sum: number, r: any) => sum + parseInt(r.errors), 0);
+          return total > 0 ? Math.round(((total - errors) / total) * 100) : 0;
+        })(),
+        avg_sync_time: 0,
+        daily_stats: dailyStatsResult.rows.map((row: any) => ({
           date: row.date,
           syncs: parseInt(row.syncs),
-          errors: parseInt(row.errors)
-        })),
-        topErrors: topErrorsResult.rows.map((row: any) => ({
-          error: row.error,
-          count: parseInt(row.count)
-        })),
-        rulePerformance: rulePerformanceResult.rows.map((row: any) => ({
-          ruleName: row.rule_name,
-          successRate: Math.round((parseInt(row.successful_syncs) / parseInt(row.total_syncs)) * 100),
-          totalSyncs: parseInt(row.total_syncs)
+          success_rate: parseInt(row.syncs) > 0
+            ? Math.round(((parseInt(row.syncs) - parseInt(row.errors)) / parseInt(row.syncs)) * 100)
+            : 0
         }))
       };
     } catch (error) {
       logger.error('Failed to get sync statistics:', error);
-      throw error;
+      return { total_syncs: 0, successful_syncs: 0, failed_syncs: 0, success_rate: 0, avg_sync_time: 0, daily_stats: [] };
     }
   }
 }
