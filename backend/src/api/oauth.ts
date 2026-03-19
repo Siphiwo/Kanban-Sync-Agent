@@ -17,7 +17,7 @@ function encrypt(text: string): string {
   const algorithm = 'aes-256-cbc';
   const key = crypto.scryptSync(process.env.JWT_SECRET!, 'salt', 32);
   const iv = crypto.randomBytes(16);
-  const cipher = crypto.createCipher(algorithm, key);
+  const cipher = crypto.createCipheriv(algorithm, key, iv);
   
   let encrypted = cipher.update(text, 'utf8', 'hex');
   encrypted += cipher.final('hex');
@@ -30,7 +30,7 @@ function decrypt(encryptedText: string): string {
   const key = crypto.scryptSync(process.env.JWT_SECRET!, 'salt', 32);
   const [ivHex, encrypted] = encryptedText.split(':');
   const iv = Buffer.from(ivHex, 'hex');
-  const decipher = crypto.createDecipher(algorithm, key);
+  const decipher = crypto.createDecipheriv(algorithm, key, iv);
   
   let decrypted = decipher.update(encrypted, 'hex', 'utf8');
   decrypted += decipher.final('utf8');
